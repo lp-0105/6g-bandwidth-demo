@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>校园去中心化带宽分享激励系统 (MVP)</title>
+    <!-- 引入 Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .dashboard-header {
+            background: #2c3e50;
+            color: white;
+            padding: 20px 0;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .control-panel {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+
+        /* 卡片样式 */
+        .user-card {
+            transition: all 0.3s ease;
+            border: none;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .user-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-header-sharer {
+            background: linear-gradient(135deg, #1cc88a 0%, #13855c 100%);
+            color: white;
+            font-weight: bold;
+        }
+
+        .card-header-freerider {
+            background: linear-gradient(135deg, #e74a3b 0%, #be2617 100%);
+            color: white;
+            font-weight: bold;
+        }
+
+        .card-header-swing {
+            background: linear-gradient(135deg, #f6c23e 0%, #dfa813 100%);
+            color: white;
+            font-weight: bold;
+        }
+
+        /* 数值动画效果 */
+        .value-badge {
+            font-size: 1.2rem;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: background-color 0.5s;
+        }
+
+        /* 网速状态颜色 */
+        .speed-normal {
+            color: #1cc88a;
+            font-weight: bold;
+        }
+
+        .speed-throttled {
+            color: #e74a3b;
+            font-weight: bold;
+            animation: pulse 1.5s infinite;
+        }
+
+        /* 红灯闪烁动画 (被惩罚降速) */
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+                text-shadow: 0 0 5px #e74a3b;
+            }
+
+            50% {
+                opacity: 0.6;
+                text-shadow: none;
+            }
+
+            100% {
+                opacity: 1;
+                text-shadow: 0 0 5px #e74a3b;
+            }
+        }
+
+        .log-box {
+            height: 180px;
+            overflow-y: auto;
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            font-size: 0.9rem;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- 顶部标题 -->
+    <header class="dashboard-header text-center">
+        <h2>🌐 校园去中心化带宽分享激励系统 (博弈论 MVP)</h2>
+        <p class="mb-0 text-white-50">直观展示：“搭便车”受惩罚降速，“合作分享”互利共赢</p>
+    </header>
+
+    <div class="container pb-5">
+        <!-- 上半部分：全局控制台 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="control-panel">
+                    <div class="row align-items-center">
+                        <div class="col-md-5">
+                            <h4 class="mb-3">⚙️ 全局上帝视角</h4>
+                            <div class="d-flex gap-3 mb-2">
+                                <span class="badge bg-primary fs-6">⚖️ 当前汇率：分享赚取 最高5.00分/GB，消费消耗 6.00分/GB</span>
+                            </div>
+                            <div class="d-flex gap-3 text-danger fs-6 fw-bold">
+                                <span>🚨 防作弊快照：未开共享瞎下载将打上无法洗白的违规案底！即使在结算前突击打开共享，也会被系统无视并强行严惩扣积分和声誉！</span>
+                            </div>
+                        </div>
+                        <div class="col-md-7 text-end">
+                            <button class="btn btn-danger btn-lg shadow-sm me-2" onclick="settleDaily()">
+                                🕒 [时间流逝：结算今日配额]
+                            </button>
+                            <button class="btn btn-secondary shadow-sm" onclick="resetAll()">
+                                🔄 重置数据
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 下半部分：用户卡片并排显示 -->
+        <div class="row g-4" id="users-container">
+            <!-- 动态生成卡片内容 -->
+            <div class="text-center text-muted col-12 py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2">正在加载用户数据...</p>
+            </div>
+        </div>
+
+        <!-- 操作日志框 -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <h5 class="text-muted">📝 交互日志与惩罚记录：</h5>
+                <div id="action-logs" class="log-box"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 内部 JS 处理逻辑 -->
+    <script>
+        // 渲染徽章头部颜色
+        function getHeaderClass(type) {
+            if (type === 'SHARER') return 'card-header-sharer';
+            if (type === 'FREERIDER') return 'card-header-freerider';
+            return 'card-header-swing';
+        }
+
+        // 渲染分享状态文本
+        function getShareBadge(isSharing) {
+            return isSharing
+                ? '<span class="badge bg-success">ON (积极分享中)</span>'
+                : '<span class="badge bg-secondary">OFF (关闭分享)</span>';
+        }
+
+        // 定时轮询获取最新用户数据 (2秒一次)
+        async function fetchUsers() {
+            try {
+                const res = await fetch('/api/users');
+                const users = await res.json();
+                renderCards(users);
+            } catch (error) {
+                console.error("刷新数据失败", error);
+            }
+        }
+
+        // 动态生成卡片 HTML
+        function renderCards(users) {
+            const container = document.getElementById('users-container');
+            let html = '';
+
+            users.forEach(user => {
+                const speedClass = user.isThrottled ? 'speed-throttled' : 'speed-normal';
+                const speedText = user.isThrottled ? `⛔ ${user.speedMbps} Mbps (已被限速)` : `🚀 ${user.speedMbps} Mbps (极速)`;
+
+                // 根据剧本需要：所有用户都可以由演示者切换分享开关、消耗流量，提供最大演示自由度
+                let btnHtml = `
+                    <button class="btn btn-outline-secondary w-100 mb-2 shadow-sm" style="font-size: 0.9rem;" onclick="toggleShare('${user.username}', ${user.id})">🔄 切换分享开关 [Toggle]</button>
+                    <button class="btn btn-${user.userType === 'FREERIDER' ? 'danger' : (user.userType === 'SHARER' ? 'success' : 'dark')} w-100 text-white shadow-sm" onclick="consume('${user.username}', ${user.id})">⏬ 消耗 1GB 流量</button>
+                `;
+
+                html += `
+                <div class="col-md-4">
+                    <div class="card user-card h-100">
+                        <div class="card-header ${getHeaderClass(user.userType)} text-center py-3">
+                            <h5 class="mb-0 text-white">${user.username}</h5>
+                            <small class="text-white-50">${user.userType === 'SHARER' ? '老实合作者' : user.userType === 'FREERIDER' ? '利己搭便车者' : '摇摆不定的普通人'}</small>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="text-muted fw-bold">分享开关：</span>
+                                ${getShareBadge(user.isSharing)}
+                            </div>
+                            
+                            <hr>
+                            
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="text-muted">当前积分 (Credits)</span>
+                                <span class="badge bg-dark value-badge fs-5">${(user.credits / 100).toFixed(2)}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="text-muted">声誉分 (Reputation)</span>
+                                <span class="value-badge fw-bold" style="color: ${user.reputation < 80 ? 'red' : 'green'};">${user.reputation} / 100</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="text-muted">今日总消耗 (GB)</span>
+                                <div>
+                                    <span class="fw-bold fs-5">${user.consumedGb + user.freerideGb} GB</span>
+                                    ${user.freerideGb > 0 ? `<br><small class="text-danger fw-bold">(含 ${user.freerideGb}GB 违规打标)</small>` : ''}
+                                </div>
+                            </div>
+                            
+                            <div class="p-3 bg-light rounded text-center mb-4">
+                                <div class="text-muted mb-1 small fw-bold">实时网速状态</div>
+                                <div class="fs-4 ${speedClass}">${speedText}</div>
+                            </div>
+                            
+                            <div>${btnHtml}</div>
+                        </div>
+                    </div>
+                </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // 追加日志并自动滚动到底部
+        function addLog(msg) {
+            const logBox = document.getElementById('action-logs');
+            const time = new Date().toLocaleTimeString();
+            logBox.innerHTML += `<div class="mb-2"><span class="text-muted">[${time}]</span> ${msg}</div>`;
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        // ======= 接口调用封装 =======
+
+        async function consume(name, userId) {
+            const res = await fetch(`/api/action/consume?userId=${userId}`, { method: 'POST' });
+            const data = await res.json();
+            addLog(`👤 <b>${name}</b> ${data.message}`);
+            fetchUsers();
+        }
+
+        async function toggleShare(name, userId) {
+            const res = await fetch(`/api/action/toggle-share?userId=${userId}`, { method: 'POST' });
+            const data = await res.json();
+            addLog(`🔄 <b>${name}</b> ${data.message}`);
+            fetchUsers();
+        }
+
+        async function settleDaily() {
+            const res = await fetch(`/api/action/settle`, { method: 'POST' });
+            const data = await res.json();
+            addLog(`<div class="alert alert-danger p-2 my-1">${data.message}</div>`);
+            fetchUsers();
+        }
+
+        async function resetAll() {
+            await fetch(`/api/action/reset`, { method: 'POST' });
+            document.getElementById('action-logs').innerHTML = '';
+            addLog("<span class='text-success'>✅ 系统数据已重置到初始状态</span>");
+            fetchUsers();
+        }
+
+        // 页面初始化：加载数据 + 开启定时器
+        window.onload = () => {
+            fetchUsers();
+            setInterval(fetchUsers, 2000); // 2秒自动刷新，演示更流畅
+            addLog("🟢 系统初始化完成，开始监控全网节点...");
+        };
+    </script>
+</body>
+
+</html>
