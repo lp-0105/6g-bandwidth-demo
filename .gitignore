@@ -3,7 +3,7 @@
 .vscode/
 *.iml
 
-# Maven
+# Maven / Java build output
 target/
 pom.xml.tag
 pom.xml.releaseBackup
@@ -15,10 +15,42 @@ buildNumber.properties
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
 
-# Log
+# Logs
 logs/
 *.log
 
-# 个人项目大文件忽略（绝对不能传压缩包和打包好的源码夹上云平台）
+# Local temporary extraction/rendering files
+tmp/
+
+# LaTeX build cache
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.lot
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+
+# Keep the rebuilt paper deliverables
+!latex_rebuild/main.tex
+!latex_rebuild/references.bib
+!latex_rebuild/main.pdf
+!latex_rebuild/修改说明.md
+!latex_rebuild/figures/
+!latex_rebuild/figures/figure1.png
+!latex_rebuild/figures/figure2.png
+!latex_rebuild/IEEEtran.cls
+
+# Large/local presentation and source snapshots
+*.pptx
+ClassPaper1*.pdf
+第一次论文Towards Sustainable Campus Bandwidth Sharing A.pdf
+
+# Personal packaged/demo copies
 6G-Bandwidth-Demo.zip
 6G-Bandwidth-Demo/
